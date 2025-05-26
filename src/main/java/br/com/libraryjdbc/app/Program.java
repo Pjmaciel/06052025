@@ -1,50 +1,48 @@
 package br.com.libraryjdbc.app;
 
-import java.sql.Connection;
-
-import br.com.libraryjdbc.dao.BookDao;
-import br.com.libraryjdbc.dao.CategoryDao;
-import br.com.libraryjdbc.model.Book;
-import br.com.libraryjdbc.model.Category;
+import br.com.libraryjdbc.model.dao.BookDAO;
+import br.com.libraryjdbc.model.dao.CategoryDAO;
+import br.com.libraryjdbc.model.entities.Book;
+import br.com.libraryjdbc.model.entities.Category;
+import br.com.libraryjdbc.model.impl.BookDAOImpl;
+import br.com.libraryjdbc.model.impl.CategoryDAOImpl;
 import db.DB;
 
 public class Program {
 
     public static void main(String[] args) {
         try {
-            Connection conn = DB.getConnection();
-            System.out.println("✅ Database connected successfully!");
+            DB.getConnection();
+            System.out.println("Database connected successfully!");
 
-            CategoryDao categoryDao = new CategoryDao();
-            BookDao bookDao = new BookDao();
+            // Create entities using constructors
+            Category category = new Category("Technical", "Programming and technical books");
+            Book book = new Book("Clean Code", "Robert C. Martin",
+                    "A handbook of agile software craftsmanship", "9780132350884", 2008, category);
 
-            categoryDao.createTable();
-            bookDao.createTable();
+            // Create DAOs using DAO pattern
+            CategoryDAO categoryDAO = new CategoryDAOImpl();
+            BookDAO bookDAO = new BookDAOImpl();
 
-            Category technical = new Category("physycal", "Programming physycal books");
-            Category savedCategory = categoryDao.save(technical);
-            System.out.println("📂 Category created: " + savedCategory);
+            // Save using DAO interfaces
+            Category savedCategory = categoryDAO.save(category);
+            book.setCategory(savedCategory); // Update with saved category (has ID)
+            Book savedBook = bookDAO.save(book);
 
-            Book cleanCode = new Book("Clean Code", "Robert C. Martin",
-                    "A handbook of agile software craftsmanship",
-                    "9788132350874", 2008, savedCategory);
-            Book savedBook = bookDao.save(cleanCode);
-            System.out.println("📖 Book created: " + savedBook);
+            // Print information
+            System.out.println("\n Category saved:");
+            System.out.println(savedCategory);
 
-            Category foundCategory = categoryDao.findById(savedCategory.getId());
-            Book foundBook = bookDao.findById(savedBook.getId());
+            System.out.println("\n Book saved:");
+            System.out.println(savedBook);
 
-            System.out.println("\n✅ Verification:");
-            System.out.println("Category valid: " + foundCategory.isValid());
-            System.out.println("Book valid: " + foundBook.isValid());
-            System.out.println("Book category: " + foundBook.getCategoryName());
-
-            System.out.println("\n🎉 Library system working correctly!");
+            System.out.println("\n✅ DAO Pattern working successfully!");
 
         } catch (Exception e) {
             System.err.println("❌ Error: " + e.getMessage());
         } finally {
             DB.closeConnection();
+            System.out.println("✅ Database connection closed.");
         }
     }
 }

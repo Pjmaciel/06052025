@@ -5,10 +5,10 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 
-import br.com.libraryjdbc.dao.BookDao;
-import br.com.libraryjdbc.dao.CategoryDao;
-import br.com.libraryjdbc.model.Book;
-import br.com.libraryjdbc.model.Category;
+import br.com.libraryjdbc.model.dao.BookDao;
+import br.com.libraryjdbc.model.dao.CategoryDao;
+import br.com.libraryjdbc.model.entities.Book;
+import br.com.libraryjdbc.model.entities.Category;
 import db.DB;
 import db.DbException;
 

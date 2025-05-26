@@ -1,7 +1,7 @@
 package br.com.libraryjdbc.test.model;
 
-import br.com.libraryjdbc.model.Book;
-import br.com.libraryjdbc.model.Category;
+import br.com.libraryjdbc.model.entities.Book;
+import br.com.libraryjdbc.model.entities.Category;
 
 
 public class TestEntities {
