@@ -1,4 +1,4 @@
-package br.com.libraryjdbc.model;
+package br.com.libraryjdbc.model.entities;
 
 /**
  * Represents a book in the library system.
