@@ -1,4 +1,4 @@
-package br.com.libraryjdbc.dao;
+package br.com.libraryjdbc.model.impl;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -8,42 +8,20 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-import br.com.libraryjdbc.model.Book;
-import br.com.libraryjdbc.model.Category;
+import br.com.libraryjdbc.model.dao.BookDAO;
+import br.com.libraryjdbc.model.dao.BookFactory;
+import br.com.libraryjdbc.model.entities.Book;
 import db.DB;
 import db.DbException;
 
+/**
+ * JDBC implementation of BookDAO interface using BookFactory.
+ * Follows the established pattern from legacy BookDao.
+ * US-008: Padrão DAO para Sistema Biblioteca
+ */
+public class BookDAOImpl implements BookDAO {
 
-public class BookDao {
-
-    public void createTable() {
-        Connection conn = null;
-        Statement st = null;
-
-        try {
-            conn = DB.getConnection();
-            st = conn.createStatement();
-
-            st.executeUpdate("CREATE TABLE IF NOT EXISTS book ("
-                    + "id SERIAL PRIMARY KEY,"
-                    + "title VARCHAR(200) NOT NULL,"
-                    + "author VARCHAR(150) NOT NULL,"
-                    + "synopsis TEXT,"
-                    + "isbn VARCHAR(20) NOT NULL UNIQUE,"
-                    + "release_year INTEGER NOT NULL CHECK (release_year >= 1967),"
-                    + "category_id INTEGER NOT NULL,"
-                    + "FOREIGN KEY (category_id) REFERENCES category(id)"
-                    + ")");
-
-            System.out.println("✅ Book table created or already exists!");
-
-        } catch (Exception e) {
-            throw new DbException(e.getMessage());
-        } finally {
-            DB.closeStatement(st);
-        }
-    }
-
+    @Override
     public Book save(Book book) {
         Connection conn = null;
         PreparedStatement st = null;
@@ -95,7 +73,6 @@ public class BookDao {
             st.setInt(5, book.getReleaseYear());
             st.setLong(6, book.getCategory().getId());
 
-            // Executing SQL
             int rowsAffected = st.executeUpdate();
 
             if (rowsAffected > 0) {
@@ -119,6 +96,7 @@ public class BookDao {
         }
     }
 
+    @Override
     public void update(Book book) {
         Connection conn = null;
         PreparedStatement st = null;
@@ -183,6 +161,7 @@ public class BookDao {
         }
     }
 
+    @Override
     public void remove(Long id) {
         Connection conn = null;
         PreparedStatement st = null;
@@ -209,6 +188,7 @@ public class BookDao {
         }
     }
 
+    @Override
     public Book findById(Long id) {
         Connection conn = null;
         PreparedStatement st = null;
@@ -229,7 +209,7 @@ public class BookDao {
             rs = st.executeQuery();
 
             if (rs.next()) {
-                return instantiateBookWithCategory(rs);
+                return BookFactory.fromResultSetWithCategory(rs);
             }
 
             return null;
@@ -242,6 +222,7 @@ public class BookDao {
         }
     }
 
+    @Override
     public List<Book> findAll() {
         Connection conn = null;
         PreparedStatement st = null;
@@ -262,7 +243,7 @@ public class BookDao {
             List<Book> books = new ArrayList<>();
 
             while (rs.next()) {
-                books.add(instantiateBookWithCategory(rs));
+                books.add(BookFactory.fromResultSetWithCategory(rs));
             }
 
             return books;
@@ -275,6 +256,7 @@ public class BookDao {
         }
     }
 
+    @Override
     public List<Book> findByAuthor(String author) {
         Connection conn = null;
         PreparedStatement st = null;
@@ -298,7 +280,7 @@ public class BookDao {
             List<Book> books = new ArrayList<>();
 
             while (rs.next()) {
-                books.add(instantiateBookWithCategory(rs));
+                books.add(BookFactory.fromResultSetWithCategory(rs));
             }
 
             return books;
@@ -311,6 +293,7 @@ public class BookDao {
         }
     }
 
+    @Override
     public List<Book> findByCategory(Long categoryId) {
         Connection conn = null;
         PreparedStatement st = null;
@@ -327,16 +310,14 @@ public class BookDao {
 
             st = conn.prepareStatement(sql);
 
-            // Setting parameter
             st.setLong(1, categoryId);
 
-            // Executing SQL
             rs = st.executeQuery();
 
             List<Book> books = new ArrayList<>();
 
             while (rs.next()) {
-                books.add(instantiateBookWithCategory(rs));
+                books.add(BookFactory.fromResultSetWithCategory(rs));
             }
 
             return books;
@@ -349,26 +330,7 @@ public class BookDao {
         }
     }
 
-    // Helper methods
-
-    private Book instantiateBookWithCategory(ResultSet rs) throws SQLException {
-        Book book = new Book();
-        book.setId(rs.getLong("id"));
-        book.setTitle(rs.getString("title"));
-        book.setAuthor(rs.getString("author"));
-        book.setSynopsis(rs.getString("synopsis"));
-        book.setIsbn(rs.getString("isbn"));
-        book.setReleaseYear(rs.getInt("release_year"));
-
-        Category category = new Category();
-        category.setId(rs.getLong("category_id"));
-        category.setName(rs.getString("category_name"));
-        category.setDescription(rs.getString("category_description"));
-
-        book.setCategory(category);
-
-        return book;
-    }
+    // Helper methods - same logic as legacy BookDao
 
     private boolean isbnExists(String isbn) {
         Connection conn = null;

@@ -5,8 +5,8 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 
-import br.com.libraryjdbc.dao.CategoryDao;
-import br.com.libraryjdbc.model.Category;
+import br.com.libraryjdbc.model.dao.CategoryDAO;
+import br.com.libraryjdbc.model.entities.Category;
 import db.DB;
 import db.DbException;
 
