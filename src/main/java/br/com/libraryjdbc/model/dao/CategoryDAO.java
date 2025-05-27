@@ -1,6 +1,8 @@
 package br.com.libraryjdbc.model.dao;
 
 import java.util.List;
+import java.util.Map;
+
 import br.com.libraryjdbc.model.entities.Category;
 
 public interface CategoryDAO {
@@ -11,4 +13,6 @@ public interface CategoryDAO {
     Category findById(Long id);
     List<Category> findAll();
     Category findCategoryWithMostBooks();
+    Map<String, Integer> getCategoryBookCounts();
+
 }
