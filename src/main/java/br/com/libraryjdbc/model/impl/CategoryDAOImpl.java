@@ -19,18 +19,13 @@ import br.com.libraryjdbc.util.ErrorMessages;
 import db.DB;
 import db.DbException;
 
-/**
- * JDBC implementation of CategoryDAO interface with enhanced exception handling.
- * US-009: Tratamento de Exceções - Enhanced error handling and logging
- * US-013: Consultas com JOIN - Added getCategoryBookCounts() method
- */
 public class CategoryDAOImpl implements CategoryDAO {
 
     private static final Logger logger = Logger.getLogger(CategoryDAOImpl.class.getName());
 
     @Override
     public Category save(Category category) {
-        logger.info("Attempting to save category: " + (category != null ? category.getName() : "null"));
+        logger.info("DAO: Saving category: " + (category != null ? category.getName() : "null"));
 
         Connection conn = null;
         PreparedStatement st = null;
@@ -42,16 +37,7 @@ public class CategoryDAOImpl implements CategoryDAO {
             conn = DB.getConnection();
             originalAutoCommit = conn.getAutoCommit();
 
-            // Validations BEFORE starting transaction
-            validateCategoryForSave(category);
-
-            if (categoryNameExists(category.getName())) {
-                String errorMsg = String.format(ErrorMessages.CATEGORY_NAME_EXISTS, category.getName());
-                logger.warning("Category name validation failed: " + errorMsg);
-                throw new DbException(errorMsg);
-            }
-
-            // Start transaction AFTER validations pass
+            // Start transaction
             conn.setAutoCommit(false);
             transactionStarted = true;
 
@@ -96,10 +82,6 @@ public class CategoryDAOImpl implements CategoryDAO {
             String errorMsg = String.format(ErrorMessages.DB_INSERT_ERROR, "category", e.getMessage());
             logger.log(Level.SEVERE, errorMsg, e);
             throw new DbException(errorMsg);
-        } catch (DbException e) {
-            handleTransactionRollback(conn, transactionStarted);
-            logger.log(Level.WARNING, "Business rule validation failed: " + e.getMessage(), e);
-            throw e; // Re-throw DbException as-is
         } catch (Exception e) {
             handleTransactionRollback(conn, transactionStarted);
             String errorMsg = String.format(ErrorMessages.UNEXPECTED_ERROR, e.getMessage());
@@ -114,7 +96,7 @@ public class CategoryDAOImpl implements CategoryDAO {
 
     @Override
     public void update(Category category) {
-        logger.info("Attempting to update category ID: " + (category != null ? category.getId() : "null"));
+        logger.info("DAO: Updating category ID: " + (category != null ? category.getId() : "null"));
 
         Connection conn = null;
         PreparedStatement st = null;
@@ -125,10 +107,7 @@ public class CategoryDAOImpl implements CategoryDAO {
             conn = DB.getConnection();
             originalAutoCommit = conn.getAutoCommit();
 
-            // Validations BEFORE starting transaction
-            validateCategoryForUpdate(category);
-
-            // Start transaction AFTER validations pass
+            // Start transaction
             conn.setAutoCommit(false);
             transactionStarted = true;
 
@@ -151,17 +130,13 @@ public class CategoryDAOImpl implements CategoryDAO {
             }
 
             conn.commit(); // Commit transaction
-            logger.info("Category updated successfully. ID: " + category.getId());
+            logger.info("DAO: Category updated successfully. ID: " + category.getId());
 
         } catch (SQLException e) {
             handleTransactionRollback(conn, transactionStarted);
             String errorMsg = String.format(ErrorMessages.DB_UPDATE_ERROR, "category", e.getMessage());
             logger.log(Level.SEVERE, errorMsg, e);
             throw new DbException(errorMsg);
-        } catch (DbException e) {
-            handleTransactionRollback(conn, transactionStarted);
-            logger.log(Level.WARNING, "Business rule validation failed: " + e.getMessage(), e);
-            throw e;
         } catch (Exception e) {
             handleTransactionRollback(conn, transactionStarted);
             String errorMsg = String.format(ErrorMessages.UNEXPECTED_ERROR, e.getMessage());
@@ -175,7 +150,7 @@ public class CategoryDAOImpl implements CategoryDAO {
 
     @Override
     public void remove(Long id) {
-        logger.info("Attempting to remove category ID: " + id);
+        logger.info("DAO: Removing category ID: " + id);
 
         Connection conn = null;
         PreparedStatement st = null;
@@ -187,12 +162,6 @@ public class CategoryDAOImpl implements CategoryDAO {
             originalAutoCommit = conn.getAutoCommit();
             conn.setAutoCommit(false);
             transactionStarted = true;
-
-            if (categoryHasBooks(id)) {
-                String errorMsg = ErrorMessages.CATEGORY_HAS_BOOKS;
-                logger.warning("Category removal blocked: " + errorMsg + " (ID: " + id + ")");
-                throw new DbException(errorMsg);
-            }
 
             String sql = "DELETE FROM category WHERE id = ?";
             st = conn.prepareStatement(sql);
@@ -210,17 +179,13 @@ public class CategoryDAOImpl implements CategoryDAO {
             }
 
             conn.commit();
-            logger.info("Category removed successfully. ID: " + id);
+            logger.info("DAO: Category removed successfully. ID: " + id);
 
         } catch (SQLException e) {
             handleTransactionRollback(conn, transactionStarted);
             String errorMsg = String.format(ErrorMessages.DB_DELETE_ERROR, "category", e.getMessage());
             logger.log(Level.SEVERE, errorMsg, e);
             throw new DbException(errorMsg);
-        } catch (DbException e) {
-            handleTransactionRollback(conn, transactionStarted);
-            logger.log(Level.WARNING, "Business rule validation failed: " + e.getMessage(), e);
-            throw e;
         } catch (Exception e) {
             handleTransactionRollback(conn, transactionStarted);
             String errorMsg = String.format(ErrorMessages.UNEXPECTED_ERROR, e.getMessage());
@@ -234,7 +199,7 @@ public class CategoryDAOImpl implements CategoryDAO {
 
     @Override
     public Category findById(Long id) {
-        logger.fine("Finding category by ID: " + id);
+        logger.fine("DAO: Finding category by ID: " + id);
         String sql = "SELECT * FROM category WHERE id = ?";
 
         try (Connection conn = DB.getConnection();
@@ -246,12 +211,12 @@ public class CategoryDAOImpl implements CategoryDAO {
             try (ResultSet rs = st.executeQuery()) {
                 if (rs.next()) {
                     Category category = CategoryFactory.fromResultSet(rs);
-                    logger.fine("Category found: " + category.getName());
+                    logger.fine("DAO: Category found: " + category.getName());
                     return category;
                 }
             }
 
-            logger.fine("Category not found for ID: " + id);
+            logger.fine("DAO: Category not found for ID: " + id);
             return null;
         } catch (SQLException e) {
             String errorMsg = String.format(ErrorMessages.DB_SELECT_ERROR, "category by ID", e.getMessage());
@@ -262,7 +227,7 @@ public class CategoryDAOImpl implements CategoryDAO {
 
     @Override
     public List<Category> findAll() {
-        logger.fine("Finding all categories");
+        logger.fine("DAO: Finding all categories");
 
         Connection conn = null;
         PreparedStatement st = null;
@@ -284,7 +249,7 @@ public class CategoryDAOImpl implements CategoryDAO {
                 categories.add(CategoryFactory.fromResultSet(rs));
             }
 
-            logger.info("Found " + categories.size() + " categories");
+            logger.info("DAO: Found " + categories.size() + " categories");
             return categories;
 
         } catch (SQLException e) {
@@ -303,7 +268,7 @@ public class CategoryDAOImpl implements CategoryDAO {
 
     @Override
     public Category findCategoryWithMostBooks() {
-        logger.fine("Finding category with most books");
+        logger.fine("DAO: Finding category with most books");
 
         Connection conn = null;
         PreparedStatement st = null;
@@ -328,11 +293,11 @@ public class CategoryDAOImpl implements CategoryDAO {
             if (rs.next()) {
                 Category category = CategoryFactory.fromResultSet(rs);
                 int bookCount = rs.getInt("book_count");
-                logger.info("Category with most books: " + category.getName() + " (" + bookCount + " books)");
+                logger.info("DAO: Category with most books: " + category.getName() + " (" + bookCount + " books)");
                 return category;
             }
 
-            logger.info("No categories found");
+            logger.info("DAO: No categories found");
             return null;
 
         } catch (SQLException e) {
@@ -350,7 +315,7 @@ public class CategoryDAOImpl implements CategoryDAO {
     }
 
     public Map<String, Integer> getCategoryBookCounts() {
-        logger.fine("Getting book count for each category");
+        logger.fine("DAO: Getting book count for each category");
 
         Connection conn = null;
         PreparedStatement st = null;
@@ -379,7 +344,7 @@ public class CategoryDAOImpl implements CategoryDAO {
                 categoryBookCounts.put(categoryName, bookCount);
             }
 
-            logger.info("Found book counts for " + categoryBookCounts.size() + " categories");
+            logger.info("DAO: Found book counts for " + categoryBookCounts.size() + " categories");
             return categoryBookCounts;
 
         } catch (SQLException e) {
@@ -396,82 +361,7 @@ public class CategoryDAOImpl implements CategoryDAO {
         }
     }
 
-    // Helper Methods with Enhanced Error Handling
-
-    private void validateCategoryForSave(Category category) {
-        if (category == null) {
-            throw new DbException("Category cannot be null");
-        }
-
-        if (category.getName() == null || category.getName().trim().isEmpty()) {
-            logger.warning("Category name validation failed: empty or null");
-            throw new DbException(ErrorMessages.CATEGORY_NAME_EMPTY);
-        }
-
-        if (category.getDescription() == null || category.getDescription().trim().isEmpty()) {
-            logger.warning("Category description validation failed: empty or null");
-            throw new DbException(ErrorMessages.CATEGORY_DESCRIPTION_EMPTY);
-        }
-    }
-
-    private void validateCategoryForUpdate(Category category) {
-        validateCategoryForSave(category); // Include save validations
-
-        if (category.getId() == null) {
-            logger.warning("Category ID validation failed: null ID for update");
-            throw new DbException(ErrorMessages.CATEGORY_ID_NULL_UPDATE);
-        }
-    }
-
-    private boolean categoryNameExists(String name) {
-        Connection conn = null;
-        PreparedStatement st = null;
-        ResultSet rs = null;
-
-        try {
-            conn = DB.getConnection();
-            String sql = "SELECT COUNT(*) FROM category WHERE LOWER(name) = LOWER(?)";
-            st = conn.prepareStatement(sql);
-            st.setString(1, name);
-
-            rs = st.executeQuery();
-
-            return rs.next() && rs.getInt(1) > 0;
-
-        } catch (SQLException e) {
-            String errorMsg = String.format(ErrorMessages.DB_VALIDATION_ERROR, "category name existence", e.getMessage());
-            logger.log(Level.SEVERE, errorMsg, e);
-            throw new DbException(errorMsg);
-        } finally {
-            DB.closeStatement(st);
-            DB.closeResultSet(rs);
-        }
-    }
-
-    private boolean categoryHasBooks(Long categoryId) {
-        Connection conn = null;
-        PreparedStatement st = null;
-        ResultSet rs = null;
-
-        try {
-            conn = DB.getConnection();
-            String sql = "SELECT COUNT(*) FROM book WHERE category_id = ?";
-            st = conn.prepareStatement(sql);
-            st.setLong(1, categoryId);
-
-            rs = st.executeQuery();
-
-            return rs.next() && rs.getInt(1) > 0;
-
-        } catch (SQLException e) {
-            String errorMsg = String.format(ErrorMessages.DB_VALIDATION_ERROR, "category books existence", e.getMessage());
-            logger.log(Level.SEVERE, errorMsg, e);
-            throw new DbException(errorMsg);
-        } finally {
-            DB.closeStatement(st);
-            DB.closeResultSet(rs);
-        }
-    }
+    // Helper Methods - Only for transaction management
 
     private void handleTransactionRollback(Connection conn, boolean transactionStarted) {
         if (conn != null && transactionStarted) {
