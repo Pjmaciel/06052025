@@ -7,16 +7,18 @@ import java.util.List;
 
 import br.com.libraryjdbc.model.dao.CategoryDAO;
 import br.com.libraryjdbc.model.entities.Category;
+import br.com.libraryjdbc.model.impl.CategoryDAOImpl;
 import db.DB;
 import db.DbException;
 
 /**
- * Comprehensive test class for CategoryDao CRUD operations
+ * Comprehensive test class for CategoryDAO CRUD operations
  * US-005: CRUD Completo de Categorias - Validation Tests
+ * Fixed to use DAO Pattern (Interface + Implementation)
  */
 public class TestCategoryDao {
 
-    private static CategoryDao categoryDao;
+    private static CategoryDAO categoryDAO; // ✅ Using interface instead of concrete class
 
     public static void main(String[] args) {
         try {
@@ -24,8 +26,7 @@ public class TestCategoryDao {
             DB.getConnection();
             System.out.println("✅ Test connection established successfully!");
 
-            categoryDao = new CategoryDao();
-            categoryDao.createTable();
+            categoryDAO = new CategoryDAOImpl(); // ✅ Using implementation class
 
             // Clean test data before starting
             cleanTestData();
@@ -37,10 +38,10 @@ public class TestCategoryDao {
             testUpdateOperation();
             testRemoveOperation();
 
-            System.out.println("\n🎉 All CategoryDao CRUD tests completed successfully!");
+            System.out.println("\n🎉 All CategoryDAO CRUD tests completed successfully!");
 
         } catch (Exception e) {
-            System.err.println("❌ Error in CategoryDao tests: " + e.getMessage());
+            System.err.println("❌ Error in CategoryDAO tests: " + e.getMessage());
             e.printStackTrace();
         } finally {
             // Clean up test data
@@ -70,7 +71,7 @@ public class TestCategoryDao {
 
         try {
             Category category = new Category("Fiction", "Fiction books and novels");
-            Category saved = categoryDao.save(category);
+            Category saved = categoryDAO.save(category);
 
             if (saved.getId() != null && saved.getId() > 0) {
                 System.out.println("✅ Valid category saved successfully with ID: " + saved.getId());
@@ -89,7 +90,7 @@ public class TestCategoryDao {
         try {
             // Try to save category with same name
             Category duplicate = new Category("Fiction", "Different description");
-            categoryDao.save(duplicate);
+            categoryDAO.save(duplicate);
 
             System.out.println("❌ VALIDATION FAILURE: Duplicate name was allowed!");
 
@@ -108,7 +109,7 @@ public class TestCategoryDao {
         // Test empty name
         try {
             Category emptyName = new Category("", "Valid description");
-            categoryDao.save(emptyName);
+            categoryDAO.save(emptyName);
             System.out.println("❌ VALIDATION FAILURE: Empty name was allowed!");
         } catch (DbException e) {
             if (e.getMessage().contains("name cannot be empty")) {
@@ -121,7 +122,7 @@ public class TestCategoryDao {
         // Test null description
         try {
             Category nullDescription = new Category("Valid Name", null);
-            categoryDao.save(nullDescription);
+            categoryDAO.save(nullDescription);
             System.out.println("❌ VALIDATION FAILURE: Null description was allowed!");
         } catch (DbException e) {
             if (e.getMessage().contains("description cannot be empty")) {
@@ -134,7 +135,7 @@ public class TestCategoryDao {
         // Test whitespace-only name
         try {
             Category whitespaceData = new Category("   ", "   ");
-            categoryDao.save(whitespaceData);
+            categoryDAO.save(whitespaceData);
             System.out.println("❌ VALIDATION FAILURE: Whitespace-only data was allowed!");
         } catch (DbException e) {
             if (e.getMessage().contains("cannot be empty")) {
@@ -166,10 +167,10 @@ public class TestCategoryDao {
         try {
             // First ensure we have a category
             Category technical = new Category("Technical", "Programming and technical books");
-            Category saved = categoryDao.save(technical);
+            Category saved = categoryDAO.save(technical);
 
             // Now find it
-            Category found = categoryDao.findById(saved.getId());
+            Category found = categoryDAO.findById(saved.getId());
 
             if (found != null && found.getId().equals(saved.getId())) {
                 System.out.println("✅ Existing category found successfully: " + found.getName());
@@ -186,7 +187,7 @@ public class TestCategoryDao {
         System.out.println("\n--- Find Non-Existing Category ---");
 
         try {
-            Category notFound = categoryDao.findById(999999L);
+            Category notFound = categoryDAO.findById(999999L);
 
             if (notFound == null) {
                 System.out.println("✅ Non-existing category correctly returned null");
@@ -204,7 +205,7 @@ public class TestCategoryDao {
 
         // Test negative ID
         try {
-            Category negativeId = categoryDao.findById(-1L);
+            Category negativeId = categoryDAO.findById(-1L);
 
             if (negativeId == null) {
                 System.out.println("✅ Negative ID correctly handled (returned null)");
@@ -218,7 +219,7 @@ public class TestCategoryDao {
 
         // Test zero ID
         try {
-            Category zeroId = categoryDao.findById(0L);
+            Category zeroId = categoryDAO.findById(0L);
 
             if (zeroId == null) {
                 System.out.println("✅ Zero ID correctly handled (returned null)");
@@ -251,10 +252,10 @@ public class TestCategoryDao {
 
         try {
             // Ensure we have multiple categories
-            categoryDao.save(new Category("Science", "Science and research books"));
-            categoryDao.save(new Category("History", "Historical books and biographies"));
+            categoryDAO.save(new Category("Science", "Science and research books"));
+            categoryDAO.save(new Category("History", "Historical books and biographies"));
 
-            List<Category> categories = categoryDao.findAll();
+            List<Category> categories = categoryDAO.findAll();
 
             if (categories != null && categories.size() >= 2) {
                 System.out.println("✅ Multiple categories listed successfully. Count: " + categories.size());
@@ -278,7 +279,7 @@ public class TestCategoryDao {
             // Clean all data first - more aggressive cleanup
             cleanAllTestData();
 
-            List<Category> emptyList = categoryDao.findAll();
+            List<Category> emptyList = categoryDAO.findAll();
 
             if (emptyList != null && emptyList.isEmpty()) {
                 System.out.println("✅ Empty list correctly returned when no categories exist");
@@ -297,11 +298,11 @@ public class TestCategoryDao {
 
         try {
             // Insert categories in non-alphabetical order
-            categoryDao.save(new Category("Zebra Books", "Books about zebras"));
-            categoryDao.save(new Category("Apple Books", "Books about apples"));
-            categoryDao.save(new Category("Banana Books", "Books about bananas"));
+            categoryDAO.save(new Category("Zebra Books", "Books about zebras"));
+            categoryDAO.save(new Category("Apple Books", "Books about apples"));
+            categoryDAO.save(new Category("Banana Books", "Books about bananas"));
 
-            List<Category> orderedList = categoryDao.findAll();
+            List<Category> orderedList = categoryDAO.findAll();
 
             if (orderedList.size() >= 3) {
                 boolean isOrdered = true;
@@ -346,15 +347,15 @@ public class TestCategoryDao {
 
         try {
             // Create category to update
-            Category original = categoryDao.save(new Category("Update Test", "Original description"));
+            Category original = categoryDAO.save(new Category("Update Test", "Original description"));
 
             // Update it
             original.setName("Updated Name");
             original.setDescription("Updated description");
-            categoryDao.update(original);
+            categoryDAO.update(original);
 
             // Verify update
-            Category updated = categoryDao.findById(original.getId());
+            Category updated = categoryDAO.findById(original.getId());
 
             if (updated != null &&
                     "Updated Name".equals(updated.getName()) &&
@@ -376,7 +377,7 @@ public class TestCategoryDao {
             Category nonExisting = new Category("Non Existing", "Description");
             nonExisting.setId(999999L);
 
-            categoryDao.update(nonExisting);
+            categoryDAO.update(nonExisting);
             System.out.println("❌ VALIDATION FAILURE: Update of non-existing category was allowed!");
 
         } catch (DbException e) {
@@ -392,14 +393,13 @@ public class TestCategoryDao {
         System.out.println("\n--- Update With Invalid Data ---");
 
         try {
-            // Create valid category first
-            Category valid = categoryDao.save(new Category("Valid for Update", "Valid description"));
+            Category valid = categoryDAO.save(new Category("Valid for Update", "Valid description"));
 
             // Test null ID
             try {
                 Category nullId = new Category("Name", "Description");
                 nullId.setId(null);
-                categoryDao.update(nullId);
+                categoryDAO.update(nullId);
                 System.out.println("❌ VALIDATION FAILURE: Update with null ID was allowed!");
             } catch (DbException e) {
                 if (e.getMessage().contains("ID cannot be null")) {
@@ -412,7 +412,7 @@ public class TestCategoryDao {
             // Test empty name
             try {
                 valid.setName("");
-                categoryDao.update(valid);
+                categoryDAO.update(valid);
                 System.out.println("❌ VALIDATION FAILURE: Update with empty name was allowed!");
             } catch (DbException e) {
                 if (e.getMessage().contains("name cannot be empty")) {
@@ -427,18 +427,14 @@ public class TestCategoryDao {
         }
     }
 
-    // ==================== REMOVE OPERATION TESTS ====================
 
     private static void testRemoveOperation() {
         System.out.println("\n=== REMOVE OPERATION TESTS ===");
 
-        // Test 1: Valid removal (without book dependency check)
         testValidRemovalSimple();
 
-        // Test 2: Remove category with books (skip if book table doesn't exist)
         testRemovalWithBooksIfTableExists();
 
-        // Test 3: Remove non-existing category
         testRemoveNonExisting();
     }
 
@@ -446,15 +442,12 @@ public class TestCategoryDao {
         System.out.println("\n--- Valid Removal Test (Simple) ---");
 
         try {
-            // Create category to remove (use unique name to avoid conflicts)
-            Category toRemove = categoryDao.save(new Category("ToRemove" + System.currentTimeMillis(), "Category to be removed"));
+            Category toRemove = categoryDAO.save(new Category("ToRemove" + System.currentTimeMillis(), "Category to be removed"));
             Long idToRemove = toRemove.getId();
 
-            // Remove it
-            categoryDao.remove(idToRemove);
+            categoryDAO.remove(idToRemove);
 
-            // Verify removal
-            Category removed = categoryDao.findById(idToRemove);
+            Category removed = categoryDAO.findById(idToRemove);
 
             if (removed == null) {
                 System.out.println("✅ Category removed successfully");
@@ -463,12 +456,7 @@ public class TestCategoryDao {
             }
 
         } catch (DbException e) {
-            if (e.getMessage().contains("book") && e.getMessage().contains("does not exist")) {
-                System.out.println("⚠️ Book table doesn't exist - cannot test full removal validation");
-                System.out.println("✅ Remove operation exists but depends on book table");
-            } else {
-                System.out.println("❌ Unexpected error in removal: " + e.getMessage());
-            }
+            System.out.println("❌ Unexpected error in removal: " + e.getMessage());
         }
     }
 
@@ -476,16 +464,12 @@ public class TestCategoryDao {
         System.out.println("\n--- Removal With Books Test (If Table Exists) ---");
 
         try {
-            // Create category
-            Category categoryWithBooks = categoryDao.save(new Category("WithBooks" + System.currentTimeMillis(), "Category that might have books"));
+            Category categoryWithBooks = categoryDAO.save(new Category("WithBooks" + System.currentTimeMillis(), "Category that might have books"));
 
-            // Check if book table exists before proceeding
             if (bookTableExists()) {
-                // Insert test book
                 insertTestBook(categoryWithBooks.getId());
 
-                // Try to remove category
-                categoryDao.remove(categoryWithBooks.getId());
+                categoryDAO.remove(categoryWithBooks.getId());
                 System.out.println("❌ VALIDATION FAILURE: Category with books was allowed to be removed!");
 
             } else {
@@ -496,8 +480,6 @@ public class TestCategoryDao {
         } catch (DbException e) {
             if (e.getMessage().contains("associated books")) {
                 System.out.println("✅ Category with books removal validation working: " + e.getMessage());
-            } else if (e.getMessage().contains("does not exist")) {
-                System.out.println("⚠️ Book table doesn't exist - FK validation cannot be tested yet");
             } else {
                 System.out.println("❌ Unexpected error message: " + e.getMessage());
             }
@@ -508,15 +490,12 @@ public class TestCategoryDao {
         System.out.println("\n--- Remove Non-Existing Category ---");
 
         try {
-            categoryDao.remove(999999L);
+            categoryDAO.remove(999999L);
             System.out.println("❌ VALIDATION FAILURE: Removal of non-existing category was allowed!");
 
         } catch (DbException e) {
             if (e.getMessage().contains("not found")) {
                 System.out.println("✅ Remove non-existing category validation working: " + e.getMessage());
-            } else if (e.getMessage().contains("does not exist")) {
-                System.out.println("⚠️ Book table doesn't exist - but validation logic exists");
-                System.out.println("✅ Remove method will work properly when book table is created");
             } else {
                 System.out.println("❌ Unexpected error message: " + e.getMessage());
             }
@@ -529,7 +508,6 @@ public class TestCategoryDao {
         try {
             Connection conn = DB.getConnection();
 
-            // Clean books first (FK dependency) - only if table exists
             if (bookTableExists()) {
                 try (PreparedStatement st = conn.prepareStatement(
                         "DELETE FROM book WHERE isbn LIKE '%TEST%' OR title LIKE '%Test%'")) {
@@ -548,7 +526,6 @@ public class TestCategoryDao {
             }
 
         } catch (SQLException e) {
-            // Ignore cleanup errors - they're not critical for tests
         }
     }
 
