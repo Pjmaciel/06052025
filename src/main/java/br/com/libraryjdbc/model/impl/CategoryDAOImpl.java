@@ -6,7 +6,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -20,6 +22,7 @@ import db.DbException;
 /**
  * JDBC implementation of CategoryDAO interface with enhanced exception handling.
  * US-009: Tratamento de Exceções - Enhanced error handling and logging
+ * US-013: Consultas com JOIN - Added getCategoryBookCounts() method
  */
 public class CategoryDAOImpl implements CategoryDAO {
 
@@ -151,16 +154,16 @@ public class CategoryDAOImpl implements CategoryDAO {
             logger.info("Category updated successfully. ID: " + category.getId());
 
         } catch (SQLException e) {
-            handleTransactionRollback(conn, transactionStarted);  // Fixed: added transactionStarted parameter
+            handleTransactionRollback(conn, transactionStarted);
             String errorMsg = String.format(ErrorMessages.DB_UPDATE_ERROR, "category", e.getMessage());
             logger.log(Level.SEVERE, errorMsg, e);
             throw new DbException(errorMsg);
         } catch (DbException e) {
-            handleTransactionRollback(conn, transactionStarted);  // Fixed: added transactionStarted parameter
+            handleTransactionRollback(conn, transactionStarted);
             logger.log(Level.WARNING, "Business rule validation failed: " + e.getMessage(), e);
             throw e;
         } catch (Exception e) {
-            handleTransactionRollback(conn, transactionStarted);  // Fixed: added transactionStarted parameter
+            handleTransactionRollback(conn, transactionStarted);
             String errorMsg = String.format(ErrorMessages.UNEXPECTED_ERROR, e.getMessage());
             logger.log(Level.SEVERE, errorMsg, e);
             throw new DbException(errorMsg);
@@ -177,13 +180,13 @@ public class CategoryDAOImpl implements CategoryDAO {
         Connection conn = null;
         PreparedStatement st = null;
         boolean originalAutoCommit = true;
-        boolean transactionStarted = false;  // Add this line to declare the variable
+        boolean transactionStarted = false;
 
         try {
             conn = DB.getConnection();
             originalAutoCommit = conn.getAutoCommit();
-            conn.setAutoCommit(false); // Start transaction
-            transactionStarted = true;  // Add this line to set it to true after starting transaction
+            conn.setAutoCommit(false);
+            transactionStarted = true;
 
             if (categoryHasBooks(id)) {
                 String errorMsg = ErrorMessages.CATEGORY_HAS_BOOKS;
@@ -206,7 +209,7 @@ public class CategoryDAOImpl implements CategoryDAO {
                 throw new DbException(errorMsg);
             }
 
-            conn.commit(); // Commit transaction
+            conn.commit();
             logger.info("Category removed successfully. ID: " + id);
 
         } catch (SQLException e) {
@@ -334,6 +337,53 @@ public class CategoryDAOImpl implements CategoryDAO {
 
         } catch (SQLException e) {
             String errorMsg = String.format(ErrorMessages.DB_SELECT_ERROR, "category with most books", e.getMessage());
+            logger.log(Level.SEVERE, errorMsg, e);
+            throw new DbException(errorMsg);
+        } catch (Exception e) {
+            String errorMsg = String.format(ErrorMessages.UNEXPECTED_ERROR, e.getMessage());
+            logger.log(Level.SEVERE, errorMsg, e);
+            throw new DbException(errorMsg);
+        } finally {
+            DB.closeStatement(st);
+            DB.closeResultSet(rs);
+        }
+    }
+
+    public Map<String, Integer> getCategoryBookCounts() {
+        logger.fine("Getting book count for each category");
+
+        Connection conn = null;
+        PreparedStatement st = null;
+        ResultSet rs = null;
+
+        try {
+            conn = DB.getConnection();
+
+            String sql = "SELECT c.name, COUNT(b.id) as book_count " +
+                    "FROM category c " +
+                    "INNER JOIN book b ON c.id = b.category_id " +
+                    "GROUP BY c.name " +
+                    "ORDER BY book_count DESC";
+
+            st = conn.prepareStatement(sql);
+
+            logger.fine("Executing SQL: " + sql);
+
+            rs = st.executeQuery();
+
+            Map<String, Integer> categoryBookCounts = new HashMap<>();
+
+            while (rs.next()) {
+                String categoryName = rs.getString("name");
+                int bookCount = rs.getInt("book_count");
+                categoryBookCounts.put(categoryName, bookCount);
+            }
+
+            logger.info("Found book counts for " + categoryBookCounts.size() + " categories");
+            return categoryBookCounts;
+
+        } catch (SQLException e) {
+            String errorMsg = String.format(ErrorMessages.DB_SELECT_ERROR, "category book counts", e.getMessage());
             logger.log(Level.SEVERE, errorMsg, e);
             throw new DbException(errorMsg);
         } catch (Exception e) {
