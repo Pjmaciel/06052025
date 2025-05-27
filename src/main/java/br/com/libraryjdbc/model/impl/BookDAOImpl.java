@@ -17,10 +17,6 @@ import br.com.libraryjdbc.util.ErrorMessages;
 import db.DB;
 import db.DbException;
 
-/**
- * JDBC implementation of BookDAO interface with enhanced exception handling.
- * US-009: Tratamento de Exceções - Enhanced error handling and logging
- */
 public class BookDAOImpl implements BookDAO {
 
     private static final Logger logger = Logger.getLogger(BookDAOImpl.class.getName());
@@ -39,24 +35,9 @@ public class BookDAOImpl implements BookDAO {
             conn = DB.getConnection();
             originalAutoCommit = conn.getAutoCommit();
 
-            // Validations BEFORE starting transaction (to avoid rollback issues)
-            validateBookForSave(book);
-
-            // Start transaction AFTER validations pass
+            // Start transaction
             conn.setAutoCommit(false);
             transactionStarted = true;
-
-            if (isbnExists(book.getIsbn())) {
-                String errorMsg = String.format(ErrorMessages.BOOK_ISBN_EXISTS, book.getIsbn());
-                logger.warning("Book ISBN validation failed: " + errorMsg);
-                throw new DbException(errorMsg);
-            }
-
-            if (!categoryExists(book.getCategory().getId())) {
-                String errorMsg = String.format(ErrorMessages.BOOK_CATEGORY_NOT_EXISTS, book.getCategory().getId());
-                logger.warning("Book category validation failed: " + errorMsg);
-                throw new DbException(errorMsg);
-            }
 
             String sql = "INSERT INTO book (title, author, synopsis, isbn, release_year, category_id) VALUES (?, ?, ?, ?, ?, ?)";
             st = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
@@ -132,18 +113,9 @@ public class BookDAOImpl implements BookDAO {
             conn = DB.getConnection();
             originalAutoCommit = conn.getAutoCommit();
 
-            // Validations BEFORE starting transaction
-            validateBookForUpdate(book);
-
-            // Start transaction AFTER validations pass
+            // Start transaction
             conn.setAutoCommit(false);
             transactionStarted = true;
-
-            if (!categoryExists(book.getCategory().getId())) {
-                String errorMsg = String.format(ErrorMessages.BOOK_CATEGORY_NOT_EXISTS, book.getCategory().getId());
-                logger.warning("Book category validation failed: " + errorMsg);
-                throw new DbException(errorMsg);
-            }
 
             String sql = "UPDATE book SET title = ?, author = ?, synopsis = ?, isbn = ?, release_year = ?, category_id = ? WHERE id = ?";
             st = conn.prepareStatement(sql);
@@ -428,103 +400,7 @@ public class BookDAOImpl implements BookDAO {
         }
     }
 
-    // Helper Methods with Enhanced Error Handling
-
-    private void validateBookForSave(Book book) {
-        if (book == null) {
-            throw new DbException("Book cannot be null");
-        }
-
-        if (book.getTitle() == null || book.getTitle().trim().isEmpty()) {
-            logger.warning("Book title validation failed: empty or null");
-            throw new DbException(ErrorMessages.BOOK_TITLE_EMPTY);
-        }
-
-        if (book.getAuthor() == null || book.getAuthor().trim().isEmpty()) {
-            logger.warning("Book author validation failed: empty or null");
-            throw new DbException(ErrorMessages.BOOK_AUTHOR_EMPTY);
-        }
-
-        if (book.getIsbn() == null || book.getIsbn().trim().isEmpty()) {
-            logger.warning("Book ISBN validation failed: empty or null");
-            throw new DbException(ErrorMessages.BOOK_ISBN_EMPTY);
-        }
-
-        if (book.getReleaseYear() == null) {
-            logger.warning("Book release year validation failed: null");
-            throw new DbException(ErrorMessages.BOOK_YEAR_NULL);
-        }
-
-        if (book.getReleaseYear() < 1967) {
-            String errorMsg = String.format(ErrorMessages.BOOK_YEAR_INVALID, book.getReleaseYear());
-            logger.warning("Book release year validation failed: " + errorMsg);
-            throw new DbException(errorMsg);
-        }
-
-        if (book.getCategory() == null || book.getCategory().getId() == null) {
-            logger.warning("Book category validation failed: null category or category ID");
-            throw new DbException(ErrorMessages.BOOK_CATEGORY_INVALID);
-        }
-    }
-
-    private void validateBookForUpdate(Book book) {
-        validateBookForSave(book); // Include save validations
-
-        if (book.getId() == null) {
-            logger.warning("Book ID validation failed: null ID for update");
-            throw new DbException(ErrorMessages.BOOK_ID_NULL_UPDATE);
-        }
-    }
-
-    private boolean isbnExists(String isbn) {
-        Connection conn = null;
-        PreparedStatement st = null;
-        ResultSet rs = null;
-
-        try {
-            conn = DB.getConnection();
-            String sql = "SELECT COUNT(*) FROM book WHERE isbn = ?";
-            st = conn.prepareStatement(sql);
-            st.setString(1, isbn);
-
-            rs = st.executeQuery();
-
-            return rs.next() && rs.getInt(1) > 0;
-
-        } catch (SQLException e) {
-            String errorMsg = String.format(ErrorMessages.DB_VALIDATION_ERROR, "ISBN existence", e.getMessage());
-            logger.log(Level.SEVERE, errorMsg, e);
-            throw new DbException(errorMsg);
-        } finally {
-            DB.closeStatement(st);
-            DB.closeResultSet(rs);
-        }
-    }
-
-    private boolean categoryExists(Long categoryId) {
-        Connection conn = null;
-        PreparedStatement st = null;
-        ResultSet rs = null;
-
-        try {
-            conn = DB.getConnection();
-            String sql = "SELECT COUNT(*) FROM category WHERE id = ?";
-            st = conn.prepareStatement(sql);
-            st.setLong(1, categoryId);
-
-            rs = st.executeQuery();
-
-            return rs.next() && rs.getInt(1) > 0;
-
-        } catch (SQLException e) {
-            String errorMsg = String.format(ErrorMessages.DB_VALIDATION_ERROR, "category existence", e.getMessage());
-            logger.log(Level.SEVERE, errorMsg, e);
-            throw new DbException(errorMsg);
-        } finally {
-            DB.closeStatement(st);
-            DB.closeResultSet(rs);
-        }
-    }
+    // Helper Methods for Transaction Management
 
     private void handleTransactionRollback(Connection conn, boolean transactionStarted) {
         if (conn != null && transactionStarted) {
